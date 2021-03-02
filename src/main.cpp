@@ -3,8 +3,8 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_I2CDevice.h>
 #include "RTClib.h"
-
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -16,6 +16,7 @@ RTC_DS3231 rtc;
 
 void setup()
 {
+
     Serial.begin(9600);
     rtc.adjust(DateTime(2021, 2, 10, 17, 49, 10));
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -50,6 +51,7 @@ void displayData(uint8_t minut, uint8_t uhr)
 
 void loop()
 {
+    /*
     slip:
     DateTime now = rtc.now();
     if (now.hour() > 20  || now.hour() < 5) {
@@ -69,5 +71,6 @@ void loop()
         DateTime now = rtc.now();
 
         displayData(now.minute(), now.hour());
-    }
+
+    }*/
 }
