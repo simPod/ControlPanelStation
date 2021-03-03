@@ -5,6 +5,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_I2CDevice.h>
 #include "RTClib.h"
+#include "Sleep.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -31,11 +32,6 @@ void setup()
     delay(15);
 }
 
-void goodNight()
-{
-    delay(100);
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-}
 
 void displayData(uint8_t minut, uint8_t uhr)
 {
