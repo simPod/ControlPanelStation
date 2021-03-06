@@ -119,7 +119,7 @@ void setup()
     clock.setup();
     Serial.begin(9600);
     delay(15);
-    clock.customAdjust(20,39);
+    clock.customAdjust(21,27);
 }
 
 void loop()
