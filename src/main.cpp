@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <LowPower.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -6,13 +7,43 @@
 #include <Adafruit_I2CDevice.h>
 #include "RTClib.h"
 #include <IRremote.h>
+#include <Servo.h>
 #include "Sleep.h"
 #include "Display.h"
 #include "Time.h"
 
-
 RTC_DS3231 rtc;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Servo servo;
+
+//defined IR out at pin 3
+
+class PinClass
+{
+public:
+    const byte relayPin = 5;
+    const byte servoPin = 6;
+
+    explicit PinClass(String init)
+    {
+        pinMode(relayPin, OUTPUT);
+        digitalWrite(relayPin, HIGH);
+        servo.attach(servoPin);
+    }
+
+    PinClass()
+    = default;
+
+    void high(uint8_t pinNum)
+    {
+        digitalWrite(pinNum, HIGH);
+    }
+
+    void low(uint8_t pinNum)
+    {
+        digitalWrite(pinNum, LOW);
+    }
+};
 
 class DisplayClass
 
@@ -21,9 +52,9 @@ public:
     DisplayClass()
     = default;
 
-    explicit DisplayClass(String initial)
+    explicit DisplayClass(String init)
     {
-        init();
+        setup();
         display.setTextColor(SSD1306_WHITE);
         size(2);
         cursor(0,0);
@@ -31,17 +62,16 @@ public:
         update();
     }
 
-    void init()
+    void setup()
     {
         if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
             Serial.println(F("SSD1306 allocation failed"));
             for (;;);
         }
-            display.print("hello ma frent");
-            delay(1000);
-        }
 
-    void displayData(uint8_t uhr, uint8_t minut)
+    }
+
+    void adjustHoursMinutes(uint8_t uhr, uint8_t minut)
     {
         clear();
         cursor(30,0);
@@ -76,7 +106,14 @@ public:
 
 class RtcClass
 {
-    public:
+public:
+    explicit RtcClass(String init) {
+        setup();
+    }
+
+    RtcClass()
+    = default;
+
     void setup() {
         if (!rtc.begin()) {
             Serial.println("Couldn't find RTC");
@@ -90,75 +127,114 @@ class RtcClass
         }
     }
 
-    void customAdjust(uint8_t hour, uint8_t min)
-    {
-        rtc.adjust(DateTime(2021, 2, 25, hour, min, 40));
+    void customAdjust(uint8_t hour, uint8_t min) {
+        rtc.adjust(DateTime(2021, 3, 8, hour, min, 10));
     }
 
-    DateTime getTime(){
+    DateTime getTime() {
         return rtc.now();
     }
 
-    bool isReadingTime(){
+    bool isReadingTime() {
         DateTime now = getTime();
-
         return now.hour() == 20 && now.minute() == 40;
     }
 
-    bool isSleepTime(){
+    bool isSleepTime() {
         DateTime now = getTime();
-
         return now.hour() == 21 && now.minute() == 28;
+    }
+
+    bool isNightMode() {
+        DateTime now = getTime();
+        return (now.hour() >= 21 && now.minute() >= 29) || now.hour() < 5;
+    }
+
+    bool isDaylight() {
+        DateTime now = getTime();
+        return now.hour() == 6 && now.minute() == 20;
+    }
+
+    bool isNightlight()
+    {
+        DateTime now = getTime();
+        return now.hour() == 19 && now.minute() == 30;
+    }
+};
+
+class IrClass
+{
+private:
+    uint8_t address = 0x0;
+    uint8_t numOfRepeats = 0;
+public:
+    explicit IrClass(String init)
+    {
+        setup();
+    }
+    IrClass()
+    = default;
+
+    uint8_t red = 0x19;
+    uint8_t dim = 0x1D;
+    uint8_t lightUp = 0x9;
+    uint8_t on = 0xD;
+    uint8_t off = 0x1F;
+
+    void setup() //maly pismenko
+    {
+        IrSender.begin(true);
+    }
+
+    void send(uint8_t action) //maly pismenko
+    {
+        IrSender.sendNEC(address, action, numOfRepeats);
+        delay(200);
     }
 };
 
 void setup()
 {
+    PinClass pin("init");
+    IrClass ir("init");
     DisplayClass disp("init");
-    RtcClass clock;
-    clock.setup();
+    RtcClass clock("init");
     Serial.begin(9600);
     delay(15);
-    clock.customAdjust(21,27);
+    clock.customAdjust(18,18);
+    pin.low(pin.relayPin);
 }
 
 void loop()
 {
+    IrClass ir;
     DisplayClass disp;
     RtcClass clock;
+    PinClass pin;
     DateTime now = clock.getTime();
-    disp.displayData(now.hour(), now.minute());
+    disp.adjustHoursMinutes(now.hour(), now.minute());
 
     if (clock.isReadingTime()){
-
+        ir.send(ir.on);
+        ir.send(ir.red);
     }
 
     else if (clock.isSleepTime()){
-
+        ir.send(ir.off);
     }
 
-
-
-    /*
-    slip:
-    DateTime now = rtc.now();
-    if (now.hour() > 20  || now.hour() < 5) {
-        DateTime now = rtc.now();
-        display.clearDisplay();
-        display.setCursor(0, 0);
-        display.display();
-        goodNight();
-        goodNight();
-        goodNight();
-        delay(100);
-        goto slip;
+    else if (clock.isDaylight())
+    {
+        pin.low(pin.relayPin);//use register control instead
     }
 
-    else {
-        display.setTextSize(2);
-        DateTime now = rtc.now();
+    else if (clock.isNightlight())
+    {
+        pin.high(pin.relayPin); //register control instead
+        //code for servo moving turning on lampLight
+    }
 
-        displayData(now.minute(), now.hour());
-
-    }*/
+    while (clock.isNightMode()) {
+        goodNight();
+    }
 }
