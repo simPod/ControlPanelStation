@@ -71,7 +71,7 @@ public:
 
     }
 
-    void adjustHoursMinutes(uint8_t uhr, uint8_t minut)
+    void displayData(uint8_t uhr, uint8_t minut)
     {
         clear();
         cursor(30,0);
@@ -127,7 +127,7 @@ public:
         }
     }
 
-    void customAdjust(uint8_t hour, uint8_t min) {
+    void adjustHoursMinutes(uint8_t hour, uint8_t min) {
         rtc.adjust(DateTime(2021, 3, 8, hour, min, 10));
     }
 
@@ -201,7 +201,7 @@ void setup()
     RtcClass clock("init");
     Serial.begin(9600);
     delay(15);
-    clock.customAdjust(18,18);
+    clock.adjustHoursMinutes(18, 18);
     pin.low(pin.relayPin);
 }
 
@@ -212,7 +212,7 @@ void loop()
     RtcClass clock;
     PinClass pin;
     DateTime now = clock.getTime();
-    disp.adjustHoursMinutes(now.hour(), now.minute());
+    disp.displayData(now.hour(), now.minute());
 
     if (clock.isReadingTime()){
         ir.send(ir.on);
